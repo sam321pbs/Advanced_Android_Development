@@ -1,5 +1,16 @@
 package com.example.android.sunshine.app.sync;
 
+import com.bumptech.glide.Glide;
+import com.example.android.sunshine.app.MainActivity;
+import com.example.android.sunshine.app.R;
+import com.example.android.sunshine.app.Utility;
+import com.example.android.sunshine.app.data.WeatherContract;
+import com.example.android.sunshine.app.muzei.WeatherMuzeiSource;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.annotation.SuppressLint;
@@ -29,18 +40,6 @@ import android.support.v4.app.TaskStackBuilder;
 import android.text.format.Time;
 import android.util.Log;
 
-import com.bumptech.glide.Glide;
-import com.example.android.sunshine.app.BuildConfig;
-import com.example.android.sunshine.app.MainActivity;
-import com.example.android.sunshine.app.R;
-import com.example.android.sunshine.app.Utility;
-import com.example.android.sunshine.app.data.WeatherContract;
-import com.example.android.sunshine.app.muzei.WeatherMuzeiSource;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -62,6 +61,9 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
     public static final int SYNC_FLEXTIME = SYNC_INTERVAL/3;
     private static final long DAY_IN_MILLIS = 1000 * 60 * 60 * 24;
     private static final int WEATHER_NOTIFICATION_ID = 3004;
+
+    //TODO: Remove api key before commit
+    private static final String OPEN_WEATHER_MAP_API_KEY = "My APi Key";
 
 
     private static final String[] NOTIFY_WEATHER_PROJECTION = new String[] {
@@ -146,7 +148,7 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
             Uri builtUri = uriBuilder.appendQueryParameter(FORMAT_PARAM, format)
                     .appendQueryParameter(UNITS_PARAM, units)
                     .appendQueryParameter(DAYS_PARAM, Integer.toString(numDays))
-                    .appendQueryParameter(APPID_PARAM, BuildConfig.OPEN_WEATHER_MAP_API_KEY)
+                    .appendQueryParameter(APPID_PARAM, OPEN_WEATHER_MAP_API_KEY)
                     .build();
 
             URL url = new URL(builtUri.toString());
