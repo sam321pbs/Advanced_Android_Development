@@ -65,7 +65,6 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
     //TODO: Remove api key before commit
     private static final String OPEN_WEATHER_MAP_API_KEY = "My APi Key";
 
-
     private static final String[] NOTIFY_WEATHER_PROJECTION = new String[] {
             WeatherContract.WeatherEntry.COLUMN_WEATHER_ID,
             WeatherContract.WeatherEntry.COLUMN_MAX_TEMP,
