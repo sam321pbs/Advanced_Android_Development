@@ -17,8 +17,6 @@ package com.example.android.sunshine.app;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
-import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.wearable.Wearable;
 
 import com.example.android.sunshine.app.data.WeatherContract;
 import com.example.android.sunshine.app.gcm.RegistrationIntentService;
@@ -26,17 +24,11 @@ import com.example.android.sunshine.app.sync.SunshineSyncAdapter;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.ActivityOptionsCompat;
-import android.support.v4.app.LoaderManager;
-import android.support.v4.content.CursorLoader;
-import android.support.v4.content.Loader;
 import android.support.v4.util.Pair;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
@@ -46,9 +38,7 @@ import android.view.MenuItem;
 import android.view.View;
 
 public class MainActivity extends AppCompatActivity
-    implements ForecastFragment.Callback,
-    GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener,
-    LoaderManager.LoaderCallbacks<Cursor> {
+    implements ForecastFragment.Callback{
 
     private final String LOG_TAG = MainActivity.class.getSimpleName();
     private static final String DETAILFRAGMENT_TAG = "DFTAG";
@@ -57,10 +47,6 @@ public class MainActivity extends AppCompatActivity
 
     private boolean mTwoPane;
     private String mLocation;
-    private GoogleApiClient mGoogleApiClient;
-    private String mHigh = "";
-    private String mLow = "";
-    private String mWeatherId = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -123,7 +109,6 @@ public class MainActivity extends AppCompatActivity
                 startService(intent);
             }
         }
-
     }
 
     @Override
@@ -212,75 +197,5 @@ public class MainActivity extends AppCompatActivity
             return false;
         }
         return true;
-    }
-
-    @Override
-    public void onConnected(@Nullable Bundle bundle) {
-        String[] myData = new String[]{mHigh, mLow, mWeatherId};
-        new SendWeatherToWearableTask(mGoogleApiClient, myData).execute();
-    }
-
-    @Override
-    public void onConnectionSuspended(int i) {
-
-    }
-
-    @Override
-    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-
-    }
-
-    @Override
-    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
-        String sortOrder = WeatherContract.WeatherEntry.COLUMN_DATE + " ASC";
-
-        String locationSetting = Utility.getPreferredLocation(MainActivity.this);
-        //Build uri to get weather data
-        Uri weatherForLocationUri = WeatherContract.WeatherEntry.buildWeatherLocationWithStartDate(
-            locationSetting, System.currentTimeMillis());
-
-        //load weather data
-        return new CursorLoader(MainActivity.this,
-            weatherForLocationUri,
-            ForecastFragment.FORECAST_COLUMNS,
-            null,
-            null,
-            sortOrder);
-    }
-
-    @Override
-    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
-
-        if (data.getCount() == 0) {
-            //Don't do anything if there is no data in the database
-        } else {
-            if (data.moveToFirst()) {
-
-                //Get mHigh and mLow temps and weather icon id from database
-                int highColumn = data.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_MAX_TEMP);
-                int lowColumn = data.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_MIN_TEMP);
-                int weatherIdColumn = data.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_WEATHER_ID);
-
-                //Format data to strings
-                mHigh = Utility.formatTemperature(MainActivity.this, data.getDouble(highColumn));
-                mLow = Utility.formatTemperature(MainActivity.this, data.getDouble(lowColumn));
-                mWeatherId = Integer.toString(data.getInt(weatherIdColumn));
-
-
-                //After weather data is retrieved, connect to wearable to send data
-                mGoogleApiClient = new GoogleApiClient.Builder(this)
-                    .addConnectionCallbacks(this)
-                    .addOnConnectionFailedListener(this)
-                    .addApi(Wearable.API)
-                    .build();
-
-                mGoogleApiClient.connect();
-            }
-        }
-    }
-
-    @Override
-    public void onLoaderReset(Loader<Cursor> loader) {
-
     }
 }

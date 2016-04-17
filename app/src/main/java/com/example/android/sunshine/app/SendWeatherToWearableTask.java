@@ -29,11 +29,10 @@ public class SendWeatherToWearableTask extends AsyncTask<Node, Void, Void> {
 
         PutDataRequest request = dataMap.asPutDataRequest();
 
+        //Sends data to wearable
         DataApi.DataItemResult dataItemResult = Wearable.DataApi
             .putDataItem(mGoogleApiClient, request).await();
 
-
-//            Log.d ("[DEBUG] SendDataCoolTask - doInBackground", "/myapp/myevent" status, "+getStatus());
         return null;
     }
 }

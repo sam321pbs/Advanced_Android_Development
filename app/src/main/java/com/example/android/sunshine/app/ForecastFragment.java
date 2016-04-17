@@ -15,6 +15,10 @@
  */
 package com.example.android.sunshine.app;
 
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.wearable.Wearable;
+
 import com.example.android.sunshine.app.data.WeatherContract;
 import com.example.android.sunshine.app.sync.SunshineSyncAdapter;
 
@@ -28,6 +32,8 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.design.widget.AppBarLayout;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.LoaderManager;
@@ -53,7 +59,8 @@ import android.widget.TextView;
  */
 public class ForecastFragment extends Fragment
     implements LoaderManager.LoaderCallbacks<Cursor>,
-    SharedPreferences.OnSharedPreferenceChangeListener {
+    SharedPreferences.OnSharedPreferenceChangeListener,
+    GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener{
 
     public static final String LOG_TAG = ForecastFragment.class.getSimpleName();
     private ForecastAdapter mForecastAdapter;
@@ -62,6 +69,12 @@ public class ForecastFragment extends Fragment
     private int mChoiceMode;
     private boolean mHoldForTransition;
     private long mInitialSelectedDate = -1;
+
+    private String mHigh = "";
+    private String mLow = "";
+    private String mWeatherId = "";
+    private GoogleApiClient mGoogleApiClient;
+
 
     private static final String SELECTED_KEY = "selected_position";
 
@@ -328,7 +341,7 @@ public class ForecastFragment extends Fragment
     }
 
     @Override
-    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
+    public void onLoadFinished(Loader<Cursor> loader, final Cursor data) {
         mForecastAdapter.swapCursor(data);
         updateEmptyView();
         if ( data.getCount() == 0 ) {
@@ -366,16 +379,38 @@ public class ForecastFragment extends Fragment
                         if ( mHoldForTransition ) {
                             getActivity().supportStartPostponedEnterTransition();
                         }
+                        weather(data);
                         return true;
                     }
                     return false;
                 }
             });
         }
-
     }
 
+    private void weather(Cursor data){
+        if (data.moveToFirst()) {
 
+            //Get mHigh and mLow temps and weather icon id from database
+            int highColumn = data.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_MAX_TEMP);
+            int lowColumn = data.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_MIN_TEMP);
+            int weatherIdColumn = data.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_WEATHER_ID);
+
+            //Format data to strings
+            mHigh = Utility.formatTemperature(getActivity(), data.getDouble(highColumn));
+            mLow = Utility.formatTemperature(getActivity(), data.getDouble(lowColumn));
+            mWeatherId = Integer.toString(data.getInt(weatherIdColumn));
+
+            //After weather data is retrieved, connect to wearable to send data
+            mGoogleApiClient = new GoogleApiClient.Builder(getActivity())
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .addApi(Wearable.API)
+                .build();
+
+            mGoogleApiClient.connect();
+        }
+    }
 
     @Override
     public void onDestroy() {
@@ -437,5 +472,21 @@ public class ForecastFragment extends Fragment
         if (key.equals(getString(R.string.pref_location_status_key))) {
             updateEmptyView();
         }
+    }
+
+    @Override
+    public void onConnected(@Nullable Bundle bundle) {
+        String[] myData = new String[]{mHigh, mLow, mWeatherId};
+        new SendWeatherToWearableTask(mGoogleApiClient, myData).execute();
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+
     }
 }

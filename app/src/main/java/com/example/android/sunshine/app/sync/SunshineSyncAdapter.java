@@ -63,7 +63,7 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
     private static final int WEATHER_NOTIFICATION_ID = 3004;
 
     //TODO: Remove api key before commit
-    private static final String OPEN_WEATHER_MAP_API_KEY = "My APi Key";
+    private static final String OPEN_WEATHER_MAP_API_KEY = "My api";
 
     private static final String[] NOTIFY_WEATHER_PROJECTION = new String[] {
             WeatherContract.WeatherEntry.COLUMN_WEATHER_ID,
