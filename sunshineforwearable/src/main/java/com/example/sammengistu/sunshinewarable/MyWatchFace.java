@@ -16,6 +16,14 @@
 
 package com.example.sammengistu.sunshinewarable;
 
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.wearable.DataApi;
+import com.google.android.gms.wearable.DataEvent;
+import com.google.android.gms.wearable.DataEventBuffer;
+import com.google.android.gms.wearable.DataMapItem;
+import com.google.android.gms.wearable.Wearable;
+
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -29,6 +37,8 @@ import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.wearable.watchface.CanvasWatchFaceService;
 import android.support.wearable.watchface.WatchFaceStyle;
 import android.text.format.Time;
@@ -83,7 +93,8 @@ public class MyWatchFace extends CanvasWatchFaceService {
         }
     }
 
-    private class Engine extends CanvasWatchFaceService.Engine {
+    private class Engine extends CanvasWatchFaceService.Engine implements DataApi.DataListener,
+        GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener{
         final Handler mUpdateTimeHandler = new EngineHandler(this);
         boolean mRegisteredTimeZoneReceiver = false;
         Paint mBackgroundPaint;
@@ -99,6 +110,16 @@ public class MyWatchFace extends CanvasWatchFaceService {
         };
         float mXOffset;
         float mYOffset;
+
+        String mHighTemp = "";
+        String mLowTemp = "";
+        String mWeatherId = "";
+
+        GoogleApiClient mGoogleApiClient = new GoogleApiClient.Builder(MyWatchFace.this)
+            .addConnectionCallbacks(this)
+            .addOnConnectionFailedListener(this)
+            .addApi(Wearable.API)
+            .build();
 
         /**
          * Whether the display supports fewer bits for each color in ambient mode. When true, we
@@ -235,6 +256,18 @@ public class MyWatchFace extends CanvasWatchFaceService {
                 ? String.format("%d:%02d", mTime.hour, mTime.minute)
                 : String.format("%d:%02d:%02d", mTime.hour, mTime.minute, mTime.second);
             canvas.drawText(text, mXOffset, mYOffset, mTextPaint);
+
+            String dateInfoText = mAmbient
+                ? ""
+                : String.format("%d:%02d:%02d:%02d",
+                mTime.WEEK_DAY + ",", mTime.MONTH , mTime.MONTH_DAY, mTime.YEAR);
+            canvas.drawText(dateInfoText, mXOffset, mYOffset + 20, mTextPaint);
+
+            String weatherInfoText = mAmbient
+                ? ""
+                : String.format("%d:%02d:%02d",
+                mWeatherId, mHighTemp , mLowTemp);
+            canvas.drawText(weatherInfoText, mXOffset, mYOffset + 40, mTextPaint);
         }
 
         /**
@@ -268,6 +301,42 @@ public class MyWatchFace extends CanvasWatchFaceService {
                     - (timeMs % INTERACTIVE_UPDATE_RATE_MS);
                 mUpdateTimeHandler.sendEmptyMessageDelayed(MSG_UPDATE_TIME, delayMs);
             }
+        }
+
+        @Override
+        public void onDataChanged(DataEventBuffer dataEvents) {
+
+            for (DataEvent event: dataEvents) {
+
+                String eventUri = event.getDataItem().getUri().toString();
+
+                if (eventUri.contains ("myapp/myweatherdata")) {
+
+                    DataMapItem dataItem = DataMapItem.fromDataItem (event.getDataItem());
+                    String[] data = dataItem.getDataMap().getStringArray("contents");
+
+                    mHighTemp = data[0];
+                    mLowTemp = data[1];
+                    mWeatherId = data[2];
+
+                    invalidate();
+                }
+            }
+        }
+
+        @Override
+        public void onConnected(@Nullable Bundle bundle) {
+            Wearable.DataApi.addListener(mGoogleApiClient, Engine.this);
+        }
+
+        @Override
+        public void onConnectionSuspended(int i) {
+
+        }
+
+        @Override
+        public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+
         }
     }
 }

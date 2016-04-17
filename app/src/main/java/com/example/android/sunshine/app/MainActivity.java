@@ -18,10 +18,6 @@ package com.example.android.sunshine.app;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.wearable.DataApi;
-import com.google.android.gms.wearable.Node;
-import com.google.android.gms.wearable.PutDataMapRequest;
-import com.google.android.gms.wearable.PutDataRequest;
 import com.google.android.gms.wearable.Wearable;
 
 import com.example.android.sunshine.app.data.WeatherContract;
@@ -32,7 +28,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
@@ -221,9 +216,8 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
-        //TOdo: get mHigh, mLow, and weather icon
         String[] myData = new String[]{mHigh, mLow, mWeatherId};
-        new SendWeatherToWearableTask(myData).execute();
+        new SendWeatherToWearableTask(mGoogleApiClient, myData).execute();
     }
 
     @Override
@@ -288,30 +282,5 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onLoaderReset(Loader<Cursor> loader) {
 
-    }
-
-    class SendWeatherToWearableTask extends AsyncTask<Node, Void, Void> {
-
-        private final String[] contents;
-
-        public SendWeatherToWearableTask(String[] contents) {
-            this.contents = contents;
-        }
-
-        @Override
-        protected Void doInBackground(Node... nodes) {
-
-            PutDataMapRequest dataMap = PutDataMapRequest.create("/myapp/myweatherdata");
-            dataMap.getDataMap().putStringArray("contents", contents);
-
-            PutDataRequest request = dataMap.asPutDataRequest();
-
-            DataApi.DataItemResult dataItemResult = Wearable.DataApi
-                .putDataItem(mGoogleApiClient, request).await();
-
-
-//            Log.d ("[DEBUG] SendDataCoolTask - doInBackground", "/myapp/myevent" status, "+getStatus());
-            return null;
-        }
     }
 }
