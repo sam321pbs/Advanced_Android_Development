@@ -83,9 +83,9 @@ public class ForecastFragment extends Fragment
     // Specify the columns we need.
     public static final String[] FORECAST_COLUMNS = {
             // In this case the id needs to be fully qualified with a table name, since
-            // the content provider joins the location & weather tables in the background
+            // the content provider joins the location & getWeatherForWearable tables in the background
             // (both have an _id column)
-            // On the one hand, that's annoying.  On the other, you can search the weather table
+            // On the one hand, that's annoying.  On the other, you can search the getWeatherForWearable table
             // using the location set by the user, which is only in the Location table.
             // So the convenience is worth it.
             WeatherContract.WeatherEntry.TABLE_NAME + "." + WeatherContract.WeatherEntry._ID,
@@ -322,7 +322,7 @@ public class ForecastFragment extends Fragment
         // This is called when a new Loader needs to be created.  This
         // fragment only uses one loader, so we don't care about checking the id.
 
-        // To only show current and future dates, filter the query to return weather only for
+        // To only show current and future dates, filter the query to return getWeatherForWearable only for
         // dates after or including today.
 
         // Sort order:  Ascending, by date.
@@ -379,7 +379,7 @@ public class ForecastFragment extends Fragment
                         if ( mHoldForTransition ) {
                             getActivity().supportStartPostponedEnterTransition();
                         }
-                        weather(data);
+                        getWeatherForWearable(data);
                         return true;
                     }
                     return false;
@@ -388,10 +388,15 @@ public class ForecastFragment extends Fragment
         }
     }
 
-    private void weather(Cursor data){
+    /**
+     * Retrieves the high and low and weather icon. It then sets the mHigh, mLow, and
+     * mWeatherId. Then Calls mGoogleApi.connect so it can get sent to the wearable nodes
+     * @param data - weather data
+     */
+    private void getWeatherForWearable(Cursor data){
         if (data.moveToFirst()) {
 
-            //Get mHigh and mLow temps and weather icon id from database
+            //Get mHigh and mLow temps and getWeatherForWearable icon id from database
             int highColumn = data.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_MAX_TEMP);
             int lowColumn = data.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_MIN_TEMP);
             int weatherIdColumn = data.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_WEATHER_ID);
@@ -401,7 +406,7 @@ public class ForecastFragment extends Fragment
             mLow = Utility.formatTemperature(getActivity(), data.getDouble(lowColumn));
             mWeatherId = Integer.toString(data.getInt(weatherIdColumn));
 
-            //After weather data is retrieved, connect to wearable to send data
+            //After getWeatherForWearable data is retrieved, connect to wearable to send data
             mGoogleApiClient = new GoogleApiClient.Builder(getActivity())
                 .addConnectionCallbacks(this)
                 .addOnConnectionFailedListener(this)
@@ -438,7 +443,7 @@ public class ForecastFragment extends Fragment
 
     /*
         Updates the empty list view with contextually relevant information that the user can
-        use to determine why they aren't seeing weather.
+        use to determine why they aren't seeing getWeatherForWearable.
      */
     private void updateEmptyView() {
         if ( mForecastAdapter.getItemCount() == 0 ) {
@@ -476,8 +481,10 @@ public class ForecastFragment extends Fragment
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
+
         String[] myData = new String[]{mHigh, mLow, mWeatherId};
-        new SendWeatherToWearableTask(mGoogleApiClient, myData).execute();
+        //Once Connected to device send data
+        new SendWeatherToWearableTask(getActivity(), mGoogleApiClient, myData).execute();
     }
 
     @Override

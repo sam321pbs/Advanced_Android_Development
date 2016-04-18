@@ -18,6 +18,7 @@ package com.example.sammengistu.sunshinewarable;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.wearable.Asset;
 import com.google.android.gms.wearable.DataApi;
 import com.google.android.gms.wearable.DataEvent;
 import com.google.android.gms.wearable.DataEventBuffer;
@@ -29,6 +30,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -45,6 +48,7 @@ import android.text.format.Time;
 import android.view.SurfaceHolder;
 import android.view.WindowInsets;
 
+import java.io.InputStream;
 import java.lang.ref.WeakReference;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
@@ -94,7 +98,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
     }
 
     private class Engine extends CanvasWatchFaceService.Engine implements DataApi.DataListener,
-        GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener{
+        GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
         final Handler mUpdateTimeHandler = new EngineHandler(this);
         boolean mRegisteredTimeZoneReceiver = false;
         Paint mBackgroundPaint;
@@ -113,7 +117,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
 
         String mHighTemp = "";
         String mLowTemp = "";
-        String mWeatherId = "";
+        Bitmap mWeatherIconBM;
 
         GoogleApiClient mGoogleApiClient = new GoogleApiClient.Builder(MyWatchFace.this)
             .addConnectionCallbacks(this)
@@ -260,14 +264,22 @@ public class MyWatchFace extends CanvasWatchFaceService {
             String dateInfoText = mAmbient
                 ? ""
                 : String.format("%d:%02d:%02d:%02d",
-                mTime.WEEK_DAY + ",", mTime.MONTH , mTime.MONTH_DAY, mTime.YEAR);
+                mTime.WEEK_DAY + ",", mTime.MONTH, mTime.MONTH_DAY, mTime.YEAR);
             canvas.drawText(dateInfoText, mXOffset, mYOffset + 20, mTextPaint);
 
             String weatherInfoText = mAmbient
                 ? ""
-                : String.format("%d:%02d:%02d",
-                mWeatherId, mHighTemp , mLowTemp);
+                : String.format("%d:%02d", mHighTemp + "   ", mLowTemp);
             canvas.drawText(weatherInfoText, mXOffset, mYOffset + 40, mTextPaint);
+
+            //If the bitmap is not null it will draw it to the canvas
+            if (mWeatherIconBM != null) {
+                Rect destinationRect = new Rect();
+                // Set the destination rectangle size
+                destinationRect.set(0, 130, 30, 170);
+
+                canvas.drawBitmap(mWeatherIconBM, null, destinationRect, mBackgroundPaint);
+            }
         }
 
         /**
@@ -306,22 +318,51 @@ public class MyWatchFace extends CanvasWatchFaceService {
         @Override
         public void onDataChanged(DataEventBuffer dataEvents) {
 
-            for (DataEvent event: dataEvents) {
+            for (DataEvent event : dataEvents) {
 
                 String eventUri = event.getDataItem().getUri().toString();
 
-                if (eventUri.contains ("myapp/myweatherdata")) {
+                if (eventUri.contains("myapp/myweatherdata")) {
 
-                    DataMapItem dataItem = DataMapItem.fromDataItem (event.getDataItem());
-                    String[] data = dataItem.getDataMap().getStringArray("contents");
+                    DataMapItem dataItem = DataMapItem.fromDataItem(event.getDataItem());
+                    String[] data = dataItem.getDataMap().getStringArray("weather_contents");
 
                     mHighTemp = data[0];
                     mLowTemp = data[1];
-                    mWeatherId = data[2];
+
+                    Asset profileAsset = dataItem.getDataMap().getAsset("weather_icon");
+                    mWeatherIconBM = loadBitmapFromAsset(profileAsset);
 
                     invalidate();
                 }
             }
+        }
+
+        /**
+         * Loads bitmap from the asset that was passed in from the app
+         * Got from https://developer.android.com/intl/es/training/wearables/data-layer/assets.html
+         * @param asset - asset to decode and convert to bitmap
+         * @return - decoded bitmap
+         */
+        public Bitmap loadBitmapFromAsset(Asset asset) {
+            if (asset == null) {
+                throw new IllegalArgumentException("Asset must be non-null");
+            }
+            ConnectionResult result =
+                mGoogleApiClient.blockingConnect(2000, TimeUnit.MILLISECONDS);
+            if (!result.isSuccess()) {
+                return null;
+            }
+            // convert asset into a file descriptor and block until it's ready
+            InputStream assetInputStream = Wearable.DataApi.getFdForAsset(
+                mGoogleApiClient, asset).await().getInputStream();
+            mGoogleApiClient.disconnect();
+
+            if (assetInputStream == null) {
+                return null;
+            }
+            // decode the stream into a bitmap
+            return BitmapFactory.decodeStream(assetInputStream);
         }
 
         @Override
